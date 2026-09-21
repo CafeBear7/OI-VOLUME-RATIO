@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>個股期貨 OI／量比 觀測站</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;700&display=swap">
+<style>
+:root{
+  --bg:#F3EFE6; --panel:#FBF9F4; --ink:#1C1A16; --muted:#5E574B; --line:#D9D2C3;
+  --hot:#8A2F12; --up:#9A3615; --down:#2F6B4F; --bar0:#A8A091; --bar1:#C99A5B; --bar2:#C8552B; --bar3:#8A2F12;
+  --sel:#F4E1D2;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#14120E; --panel:#1E1B16; --ink:#F0EBE0; --muted:#A69C8A; --line:#332E26;
+  --hot:#F2A37A; --up:#F2A37A; --down:#8FC7A6; --bar0:#6B6455; --bar1:#B98F52; --bar2:#D3703F; --bar3:#E8804F; --sel:#3A2A1E;
+}}
+:root[data-theme="dark"]{
+  --bg:#14120E; --panel:#1E1B16; --ink:#F0EBE0; --muted:#A69C8A; --line:#332E26;
+  --hot:#F2A37A; --up:#F2A37A; --down:#8FC7A6; --bar0:#6B6455; --bar1:#B98F52; --bar2:#D3703F; --bar3:#E8804F; --sel:#3A2A1E;
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;font-size:15px;line-height:1.6;
+  padding:24px 16px calc(48px + env(safe-area-inset-bottom,0px));padding-top:calc(24px + env(safe-area-inset-top,0px))}
+.wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.num{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:12px;
+  padding-bottom:16px;border-bottom:2px solid var(--ink)}
+h1{font-family:"Noto Serif TC",serif;font-weight:700;font-size:28px;margin:0;letter-spacing:.02em}
+.sub{color:var(--muted);font-size:13px;margin-top:4px}
+.tag{padding:5px 9px;border:1px dashed var(--hot);color:var(--hot);font-size:12px;border-radius:4px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.card .k{font-size:12px;color:var(--muted)}
+.card .v{font-size:26px;font-weight:600}
+.controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.search{display:flex;align-items:center;gap:8px;height:42px;flex-grow:1;min-width:180px;max-width:260px;
+  padding:0 12px;background:var(--panel);border:1px solid var(--line);border-radius:6px}
+.search input{border:0;background:transparent;outline:0;flex-grow:1;min-width:0;font-size:14px;color:var(--ink);font-family:inherit}
+.tabs{display:flex;background:var(--line);border-radius:6px;padding:4px;gap:4px}
+.tabs button{height:34px;padding:0 14px;border:0;border-radius:4px;background:transparent;color:var(--ink);
+  font-size:14px;cursor:pointer;font-family:inherit}
+.tabs button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.tabs button .n{font-size:12px;opacity:.8;margin-left:4px}
+.tblwrap{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.thead,.trow{display:grid;
+  grid-template-columns:40px minmax(0,1.9fr) 56px minmax(0,1fr) minmax(0,1fr) minmax(0,2.4fr) 78px;
+  align-items:center;gap:8px;padding:0 16px}
+.thead{height:42px;background:var(--line);color:var(--muted);font-size:12px}
+.thead .r{text-align:right}
+.trow{width:100%;height:48px;border:0;border-top:1px solid var(--line);background:var(--panel);
+  text-align:left;font-size:14px;color:var(--ink);cursor:pointer;font-family:inherit}
+.trow:hover{background:var(--sel)}
+.trow[aria-pressed="true"]{background:var(--sel)}
+.trow .co{display:flex;align-items:center;gap:8px;min-width:0}
+.trow .nm{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{font-size:11px;padding:1px 6px;border-radius:3px;white-space:nowrap}
+.badge.sm{border:1px solid var(--muted);color:var(--muted)}
+.badge.adj{background:var(--sel);color:var(--hot)}
+.r{text-align:right}
+.bar{position:relative;flex-grow:1;height:8px;background:var(--line);border-radius:4px;display:flex}
+.bar>span{border-radius:4px}
+.bar .line{position:absolute;left:50%;top:-4px;bottom:-4px;border-left:1px dashed var(--muted)}
+.barcell{display:flex;align-items:center;gap:10px}
+.pct{width:60px;text-align:right;font-weight:600}
+footer{color:var(--muted);font-size:12px;line-height:1.7;border-top:1px solid var(--line);padding-top:14px}
+.err{background:var(--sel);border:1px solid var(--hot);border-radius:8px;padding:12px 16px;color:var(--hot);font-size:13px}
+.hint{color:var(--muted);font-size:12px}
+@media (max-width:680px){
+  .thead{display:none}
+  .trow{grid-template-columns:1fr auto;height:auto;padding:12px 14px;gap:6px 10px}
+  .trow .co{grid-column:1}
+  .trow .pctwrap{grid-column:2;text-align:right}
+  .trow .m,.trow .oi,.trow .avg{display:none}
+  .barcell{grid-column:1 / -1}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <h1>個股期貨 OI／量比 觀測站</h1>
+    <div class="sub num" id="sub">載入中…</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <span class="tag" id="freshtag" hidden></span>
+    <button id="csv" style="height:42px;padding:0 14px;border:0;border-radius:6px;background:var(--ink);color:var(--bg);font-size:14px;cursor:pointer;font-family:inherit">下載 CSV</button>
+  </div>
+</header>
+
+<div id="errbox"></div>
+
+<div class="cards" id="cards"></div>
+
+<div class="controls">
+  <label class="search">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+    <input id="q" type="text" placeholder="搜尋代號或名稱" aria-label="搜尋代號或名稱">
+  </label>
+  <div class="tabs" id="tabs"></div>
+  <span class="hint">紅＝比例上升　綠＝比例下降　虛線＝100%</span>
+</div>
+
+<div class="tblwrap">
+  <div class="thead">
+    <span>#</span><span>標的</span><span>市場</span>
+    <span class="r">近月 OI（張）</span><span class="r">5 日均量（張）</span>
+    <span style="padding-left:6px">OI／量比（刻度 0–200%）</span><span class="r">日變化</span>
+  </div>
+  <div id="rows"></div>
+</div>
+
+<footer>
+  計算方式：OI／量比 =（近月未沖銷契約數 × 每口股數）÷ 近 5 個交易日平均成交股數；每口股數依期交所公告（一般 2,000 股、小型 100 股、ETF 10,000 單位、調整型契約依調整後股數）。表中張數 = 股數 ÷ 1,000。<br>
+  資料來源：臺灣期貨交易所 OpenAPI、臺灣證券交易所 OpenAPI、證券櫃檯買賣中心 OpenAPI。每日盤後由 GitHub Actions 更新。本頁僅供參考，請以官方公告為準。
+</footer>
+</div>
+
+<script>
+const fmt = n => (n==null?'—':Math.round(n).toLocaleString('en-US'));
+const barColor = r => r>=150?'var(--bar3)':r>=100?'var(--bar2)':r>=60?'var(--bar1)':'var(--bar0)';
+const state = { data:null, market:'all', q:'' };
+
+function render(){
+  const d = state.data; if(!d) return;
+  const q = state.q.trim();
+  let rows = d.rows.slice();
+  if(state.market!=='all') rows = rows.filter(r=>r.market===state.market);
+  if(q) rows = rows.filter(r=>r.code.includes(q) || (r.name||'').includes(q));
+
+  // 摘要卡
+  const ge100 = d.rows.filter(r=>r.ratio_pct>=100).length;
+  const sorted = d.rows.map(r=>r.ratio_pct).sort((a,b)=>a-b);
+  const med = sorted.length? sorted[Math.floor(sorted.length/2)] : 0;
+  const top = d.rows[0];
+  document.getElementById('cards').innerHTML = [
+    ['比例 ≥ 100%', ge100+' 檔', '期貨部位已超過現貨一日均量'],
+    ['全體中位數', med.toFixed(1)+'%', '追蹤 '+d.count+' 檔'],
+    ['比例最高', top? top.name : '—', top? top.ratio_pct.toFixed(1)+'%・'+top.code : ''],
+    ['近月合約', d.near_month||'—', '資料日 '+d.report_date],
+  ].map(c=>`<div class="card"><span class="k">${c[0]}</span><span class="v ${/%|檔/.test(c[1])?'num':''}">${c[1]}</span><span class="k">${c[2]}</span></div>`).join('');
+
+  // 分頁
+  const counts={all:d.rows.length}; d.rows.forEach(r=>counts[r.market]=(counts[r.market]||0)+1);
+  const order=['all','上市','上櫃','ETF'];
+  document.getElementById('tabs').innerHTML = order.filter(k=>k==='all'||counts[k]).map(k=>
+    `<button data-m="${k}" aria-pressed="${state.market===k}">${k==='all'?'全部':k}<span class="n num">${counts[k]||0}</span></button>`).join('');
+
+  // 列
+  document.getElementById('rows').innerHTML = rows.map((r,i)=>{
+    const w = Math.min(r.ratio_pct/200,1)*100;
+    const pctColor = r.ratio_pct>=150?'var(--hot)':r.ratio_pct>=100?'var(--up)':'var(--ink)';
+    const sm = r.small?'<span class="badge sm">含小型</span>':'';
+    const adj = r.adjusted?'<span class="badge adj">調整型</span>':'';
+    const nd = r.avg_days<d.avg_window?`<span class="hint">（${r.avg_days}日）</span>`:'';
+    return `<div class="trow" tabindex="0" aria-pressed="false">
+      <span class="num" style="color:var(--muted)">${i+1}</span>
+      <span class="co"><span class="num" style="color:var(--muted)">${r.code}</span><span class="nm">${r.name||''}</span>${sm}${adj}</span>
+      <span class="m" style="color:var(--muted);font-size:13px">${r.market||''}</span>
+      <span class="oi r num">${fmt(r.oi_lots_equiv)}</span>
+      <span class="avg r num">${fmt(r.avg5_lots)}${nd}</span>
+      <span class="barcell"><span class="bar"><span style="width:${w}%;background:${barColor(r.ratio_pct)}"></span><span class="line"></span></span><span class="pct num" style="color:${pctColor}">${r.ratio_pct.toFixed(1)}%</span></span>
+      <span class="pctwrap num r" style="color:${pctColor}">—</span>
+    </div>`;
+  }).join('') || '<div style="padding:24px;color:var(--muted)">沒有符合條件的標的</div>';
+}
+
+function toCSV(){
+  const d=state.data; if(!d) return;
+  const head=['code','name','market','oi_lots','oi_lots_equiv','avg5_lots','ratio_pct','small','adjusted','near_month'];
+  const lines=[head.join(',')].concat(d.rows.map(r=>[r.code,r.name,r.market,r.oi_lots,r.oi_lots_equiv,r.avg5_lots,r.ratio_pct,r.small,r.adjusted,d.near_month].join(',')));
+  const blob=new Blob(['\ufeff'+lines.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='ssf_oi_ratio_'+d.report_date+'.csv';a.click();
+}
+
+document.addEventListener('click',e=>{
+  const t=e.target.closest('.tabs button'); if(t){state.market=t.dataset.m;render();return;}
+  const row=e.target.closest('.trow'); if(row){document.querySelectorAll('.trow').forEach(x=>x.setAttribute('aria-pressed','false'));row.setAttribute('aria-pressed','true');}
+});
+document.getElementById('q').addEventListener('input',e=>{state.q=e.target.value;render();});
+document.getElementById('csv').addEventListener('click',toCSV);
+
+fetch('./data/latest.json',{cache:'no-store'})
+  .then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+  .then(d=>{
+    state.data=d;
+    document.getElementById('sub').textContent=`${d.report_date}（台灣時間）盤後 · 近月 ${d.near_month} · 更新 ${(''+d.generated_at).slice(0,16).replace('T',' ')}`;
+    const tag=document.getElementById('freshtag');
+    tag.hidden=false;tag.textContent=`追蹤 ${d.count} 檔`;
+    if(d.errors&&d.errors.length){
+      document.getElementById('errbox').innerHTML=`<div class="err">部分資料來源異常，本日數據可能不完整：${d.errors.map(x=>x.split(':')[0]).join('、')}</div>`;
+    }
+    render();
+  })
+  .catch(err=>{
+    document.getElementById('sub').textContent='尚無資料';
+    document.getElementById('errbox').innerHTML=`<div class="err">讀取 data/latest.json 失敗（${err.message}）。若剛建好 repo，請先讓 GitHub Actions 跑過一次，或手動執行 <span class="num">python3 fetch.py</span> 產生資料。</div>`;
+  });
+</script>
+</body>
+</html>

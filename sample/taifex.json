@@ -1,0 +1,24 @@
+{
+ "SSF_LIST": [
+  {"Contract":"CDF","StockCode":"3231","StockName":"緯創"},
+  {"Contract":"CAF","StockCode":"2409","StockName":"友達"},
+  {"Contract":"CEF","StockCode":"2330","StockName":"台積電"},
+  {"Contract":"QAF","StockCode":"2330","StockName":"小型台積電"},
+  {"Contract":"NYF","StockCode":"0050","StockName":"元大台灣50"},
+  {"Contract":"CGF","StockCode":"3105","StockName":"穩懋"}
+ ],
+ "SSF_ADJ": [
+  {"Contract":"CGF","StockCode":"3105","UnderlyingSecurityShares":"2060"}
+ ],
+ "SSF_DAILY": [
+  {"Contract":"CDF","ContractMonth(Week)":"202610","TradingSession":"一般","OpenInterest":"18420"},
+  {"Contract":"CDF","ContractMonth(Week)":"202611","TradingSession":"一般","OpenInterest":"2100"},
+  {"Contract":"CDF","ContractMonth(Week)":"202610/202611","TradingSession":"一般","OpenInterest":"55"},
+  {"Contract":"CAF","ContractMonth(Week)":"202610","TradingSession":"一般","OpenInterest":"52100"},
+  {"Contract":"CEF","ContractMonth(Week)":"202610","TradingSession":"一般","OpenInterest":"9600"},
+  {"Contract":"CEF","ContractMonth(Week)":"202610","TradingSession":"盤後","OpenInterest":"9600"},
+  {"Contract":"QAF","ContractMonth(Week)":"202610","TradingSession":"一般","OpenInterest":"12800"},
+  {"Contract":"NYF","ContractMonth(Week)":"202610","TradingSession":"一般","OpenInterest":"1850"},
+  {"Contract":"CGF","ContractMonth(Week)":"202610","TradingSession":"一般","OpenInterest":"7300"}
+ ]
+}
