@@ -162,21 +162,23 @@ def load_near_oi(rows, meta: dict, adj: dict) -> dict:
             continue  # 不在股票期貨標的清單（可能是指數期貨等）
         if near_month is None or month < near_month:
             near_month = month
+        # 小型契約：期交所命名規則，契約代碼第 2 碼固定為 W（例：一般旺矽 UVF、小型旺矽 UWF）。
+        # SSFLists／每日行情都沒有中文契約名或每口股數欄位，只能靠代碼區分。
+        # 每口股數：小型股票 100 股、小型 ETF 1,000 單位；一般股票 2,000、一般 ETF 10,000。
+        # 調整型契約（除權／現增後換代碼）以期交所公告的每口股數為準，優先採用。
+        is_small = len(contract) >= 2 and contract[1] == "W"
         if contract in adj:
             lot = adj[contract]
-            small, adjusted = False, True
+            small, adjusted = is_small, True
+        elif is_small:
+            lot = 1000 if m["etf"] else 100
+            small, adjusted = True, False
         elif m["etf"]:
             lot = LOT_ETF
             small, adjusted = False, False
         else:
             lot = LOT_STOCK
             small, adjusted = False, False
-        # 小型／微型契約：一般代碼末碼常為特定字元，且清單名稱含「小型」。
-        # 保守起見，用商品代碼長度與名稱關鍵字偵測，偵到就用 100 股。
-        cname = pick({}, default="")  # 佔位；SSFLists 若有中文名可在此加判斷
-        if "小型" in m["name"] or "微型" in m["name"]:
-            lot = 1000 if m["etf"] else 100
-            small = True
 
         e = out.setdefault(m["stock"], {
             "stock": m["stock"], "name": m["name"], "oi_lots": 0.0,
