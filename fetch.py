@@ -43,6 +43,8 @@ SRC = {
     "SSF_LIST": f"{TAIFEX}/SSFLists",                # 股票期貨交易標的（商品代碼 ↔ 證券代號）
     "SSF_DAILY": f"{TAIFEX}/DailyMarketReportFut",   # 期貨每日交易行情（含未沖銷契約數 OI）
     "SSF_ADJ": f"{TAIFEX}/SSFAdjustedInfo",          # 調整型契約（每口股數與 2000 不同）
+    "SSF_MARGIN": f"{TAIFEX}/SingleStockFuturesMargining",     # 股票類保證金表（有契約中文名，可判小型）
+    "SSF_MARGIN_ETF": f"{TAIFEX}/SingleStockFuturesETFMargining",  # ETF 類保證金表（同上）
     "TWSE_VOL": "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL",       # 上市每日收盤
     "TPEX_VOL": "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_daily_close_quotes",  # 上櫃每日收盤
 }
@@ -128,10 +130,22 @@ def load_adjusted(rows) -> dict:
     return adj
 
 
+def load_small_set(margin_rows) -> set:
+    """從保證金表的契約中文名（ContractName，如「小型大立光期貨」）挑出小型契約代碼。
+    這是唯一可靠且與代碼字母無關的判斷依據：SSFLists 只有標的股票名，沒有契約名。"""
+    small = set()
+    for r in margin_rows:
+        contract = pick(r, "Contract", "股票期貨英文代碼", "商品代碼")
+        name = pick(r, "ContractName", "股票期貨中文簡稱", "商品名稱")
+        if contract and "小型" in name:
+            small.add(contract)
+    return small
+
+
 NEAR_RE = re.compile(r"^\d{6}$")  # 到期月份 202610；價差單為 202610/202611，用此排除
 
 
-def load_near_oi(rows, meta: dict, adj: dict) -> dict:
+def load_near_oi(rows, meta: dict, adj: dict, small_set: set) -> tuple[dict, str]:
     """每檔標的證券 → 近月 OI 累加（口 與 股）。
 
     規則：
@@ -162,11 +176,11 @@ def load_near_oi(rows, meta: dict, adj: dict) -> dict:
             continue  # 不在股票期貨標的清單（可能是指數期貨等）
         if near_month is None or month < near_month:
             near_month = month
-        # 小型契約：期交所命名規則，契約代碼第 2 碼固定為 W（例：一般旺矽 UVF、小型旺矽 UWF）。
-        # SSFLists／每日行情都沒有中文契約名或每口股數欄位，只能靠代碼區分。
+        # 小型契約：以保證金表的契約中文名判斷（含「小型」），與代碼字母無關，最可靠。
+        #（代碼命名不統一：小型旺矽 UWF、小型大立光 OLF，靠字母會漏抓。）
         # 每口股數：小型股票 100 股、小型 ETF 1,000 單位；一般股票 2,000、一般 ETF 10,000。
         # 調整型契約（除權／現增後換代碼）以期交所公告的每口股數為準，優先採用。
-        is_small = len(contract) >= 2 and contract[1] == "W"
+        is_small = contract in small_set
         if contract in adj:
             lot = adj[contract]
             small, adjusted = is_small, True
@@ -239,6 +253,7 @@ def load_all(args):
         ssf_list = blobs.get("SSF_LIST", [])
         ssf_daily = blobs.get("SSF_DAILY", [])
         ssf_adj = blobs.get("SSF_ADJ", [])
+        margin = blobs.get("SSF_MARGIN", []) + blobs.get("SSF_MARGIN_ETF", [])
         twse = blobs.get("TWSE_VOL", [])
         tpex = blobs.get("TPEX_VOL", [])
         errors = []
@@ -253,9 +268,10 @@ def load_all(args):
         ssf_list = safe("SSF_LIST")
         ssf_daily = safe("SSF_DAILY")
         ssf_adj = safe("SSF_ADJ")
+        margin = safe("SSF_MARGIN") + safe("SSF_MARGIN_ETF")
         twse = safe("TWSE_VOL")
         tpex = safe("TPEX_VOL")
-    return ssf_list, ssf_daily, ssf_adj, twse, tpex, errors
+    return ssf_list, ssf_daily, ssf_adj, margin, twse, tpex, errors
 
 
 def main():
@@ -265,11 +281,12 @@ def main():
     args = ap.parse_args()
 
     today = args.today or dt.datetime.now(TZ).date().isoformat()
-    ssf_list, ssf_daily, ssf_adj, twse, tpex, errors = load_all(args)
+    ssf_list, ssf_daily, ssf_adj, margin, twse, tpex, errors = load_all(args)
 
     meta = load_ssf_meta(ssf_list)
     adj = load_adjusted(ssf_adj)
-    oi_by_stock, near_month = load_near_oi(ssf_daily, meta, adj)
+    small_set = load_small_set(margin)
+    oi_by_stock, near_month = load_near_oi(ssf_daily, meta, adj, small_set)
     vol = {**load_twse_vol(twse), **load_tpex_vol(tpex)}
 
     # 追加當日成交量到歷史（同日重跑會覆蓋當日）
