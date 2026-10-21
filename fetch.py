@@ -33,6 +33,7 @@ ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "docs" / "data"
 HISTORY = DATA / "history.csv"
 LATEST = DATA / "latest.json"
+SMALL_CACHE = DATA / "small_contracts.json"   # 小型契約代碼快取（保證金表抓不到時備援）
 
 HISTORY_DAYS = 40          # history.csv 保留的天數（>5 即可算均量，多留一點給趨勢圖）
 AVG_WINDOW = 5             # 近幾日均量
@@ -282,10 +283,23 @@ def main():
 
     today = args.today or dt.datetime.now(TZ).date().isoformat()
     ssf_list, ssf_daily, ssf_adj, margin, twse, tpex, errors = load_all(args)
+    notes = []
 
     meta = load_ssf_meta(ssf_list)
     adj = load_adjusted(ssf_adj)
     small_set = load_small_set(margin)
+    # 快取防呆：保證金表內容很少變動。抓成功就存一份；抓失敗或結果為空時，改用上次存的清單，
+    # 避免單一來源暫時異常就讓小型契約被誤當一般契約（每口 2,000 股）而嚴重高估。
+    margin_failed = any(e.startswith("SSF_MARGIN") for e in errors) or not small_set
+    if not margin_failed:
+        DATA.mkdir(parents=True, exist_ok=True)
+        SMALL_CACHE.write_text(json.dumps({"updated": today, "contracts": sorted(small_set)},
+                                          ensure_ascii=False, indent=1), "utf-8")
+    elif SMALL_CACHE.exists():
+        cache = json.loads(SMALL_CACHE.read_text("utf-8"))
+        small_set = small_set | set(cache.get("contracts", []))
+        errors[:] = [e for e in errors if not e.startswith("SSF_MARGIN")]
+        notes.append(f"保證金表今日無法取得，小型契約清單沿用 {cache.get('updated', '先前')} 的快取")
     oi_by_stock, near_month = load_near_oi(ssf_daily, meta, adj, small_set)
     vol = {**load_twse_vol(twse), **load_tpex_vol(tpex)}
 
@@ -345,6 +359,7 @@ def main():
         "count": len(rows),
         "rows": rows,
         "errors": errors,
+        "notes": notes,
     }
     DATA.mkdir(parents=True, exist_ok=True)
     LATEST.write_text(json.dumps(payload, ensure_ascii=False, indent=1), "utf-8")

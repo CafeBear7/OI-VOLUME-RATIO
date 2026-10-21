@@ -30,7 +30,7 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/data/latest.json docs/data/history.csv
+          git add docs/data/
           if git diff --cached --quiet; then
             echo "沒有變動，略過 commit"
           else

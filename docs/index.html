@@ -211,6 +211,9 @@ loadData()
     document.getElementById('sub').textContent=`${d.report_date}（台灣時間）盤後 · 近月 ${d.near_month} · 更新 ${(''+d.generated_at).slice(0,16).replace('T',' ')}`;
     const tag=document.getElementById('freshtag');
     tag.hidden=false;tag.textContent=`追蹤 ${d.count} 檔`;
+    if(d.notes&&d.notes.length){
+      document.getElementById('errbox').innerHTML=`<div class="hint" style="padding:8px 2px">${d.notes.join('；')}</div>`;
+    }
     if(d.errors&&d.errors.length){
       document.getElementById('errbox').innerHTML=`<div class="err">部分資料來源異常，本日數據可能不完整：${d.errors.map(x=>x.split(':')[0]).join('、')}</div>`;
     }
