@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-31",
+ "updated": "2026-11-01",
  "contracts": [
   "OLF",
   "OMF",
@@ -50,6 +50,9 @@
   "VKF",
   "VNF",
   "VOF",
-  "VPF"
+  "VPF",
+  "VSF",
+  "VUF",
+  "VVF"
  ]
 }
